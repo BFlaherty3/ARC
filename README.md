@@ -1,5 +1,14 @@
-# The Abstraction and Reasoning Corpus (ARC)
+####################################
+# NUIG CT5148 Assignment 3 # 
+####################################
 
+# This is a repository cloned from the ARC for the purpose of implementing the tasks of a college assignment
+# - Implementing a hand-coded solution for a minimum of 3 chosen tasks from the ARC tasklist in python
+# - Utilises the data/training directory only
+
+###############################################
+# The Abstraction and Reasoning Corpus (ARC)
+###############################################
 This repository contains the ARC task data, as well as a browser-based interface for humans to try their hand at solving the tasks manually.
 
 *"ARC can be seen as a general artificial intelligence benchmark, as a program synthesis benchmark, or as a psychometric intelligence test. It is targeted at both humans and artificially intelligent systems that aim at emulating a human-like form of general fluid intelligence."*
