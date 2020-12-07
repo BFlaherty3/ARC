@@ -62,6 +62,86 @@
     
     All of the test and training grids are solving correctly in my implementation.  
     
+    =======
+    SUMMARY
+    =======
+    I choose three tasks that required very different approaches to the solution. This was intentional, 
+    for assignment purposes it was more effort and more challenging for me to tackle three very different problems,
+    than three similar problems that could re-use the same techniques. So in my summary of commonalities, rather than 
+    discuss simplarities between the solutions for my three chosen puzzles, I will discuss where my solution is 
+    similar and could easily be applied to other tasks in the ARC corpus, with some minor enhancements to parameterise 
+    the functions. e.g. the set of axis to apply symmetry on.
+    
+    a3325580.json requires no pattern matching, it is simply an extraction of cells of matching colors in a particular
+    order. Simple iteration, comparison and array functions are all that is required to solve. The technique can be 
+    applied to other tasks in the corpus: 
+     - f8b3ba0a.json : This task involves identifying occurrance of non-blue and non-black
+       colors and then output one column, with one cell for each color, in the order of frequency
+       of occurrance
+     - 4be741c5.json: Find the order of occurrance of each color in the grid and return one cell in one row for
+       each, in the order of occurrance
+    
+    
+    
+    3631a71a.json is a symmetry problem, where we have a pattern that is symmetrical on both the x 
+    and y axix and has missing squares that need to be solved. For this I used reversed arrays and 
+    regex pattern matching to solve each row and column for missing cells. There are many other
+    symmetrical tasks in the corpus that can be solved using the same approach.
+    
+    Examples of other symmetrical puzzles that could leverage my solution to 3631a71a.json are: 
+    - 1e32b0e9.json: requires symmetrical matching on 2 axis to complete missing cells
+    - f25ffba3.json requires symmetrical matching on the X axis only 
+    - 3345333e.json requires symmetrical matching on the Y axis only, with offset centre
+    - b8825c91.json is an almost identical task, with just a different 'missing square' color to detect and replace
+    There are also several tasks that require symmetrical matching, but on a diagonal axis. The solution approach 
+    can be extended to apply here.
+    - 73251a56.json
+    
+    
+    
+    228f6490.json involves identifying sub-shapes within the input matrix and carrying out certain
+    operations on them. In this example we had to find all the grey squares and then find
+    a non-grey shape that matched the embedded shape within the grey square, and move it.
+    Again, this solution does not require any complex matrix operations  -simple iteration, comparison 
+    and array functions meet the need, and regex can be applied where required to check overlay
+    of irregular shapes.
+    
+    Other puzzles that could leverage my solution to 228f6490.json are 
+    - 09629e4f.json can be solved with a combination of my solution to 228f6490 to extract the grey target shapes, and 
+      elements of my solution to a3325580 to determine the order of appearance of the colors in the first non-grey square
+      which determines what color the square embedded within each grey shape will take
+    - bb43febb.json, Extract the grey parallelograms and color the centre red
+    - d9fac9be.json,  Extract the shape contained within another shape 
+    - 890034e9.json, Extract an embedded shape and then find a matching shape 
+    - 776ffc46.json, Find the shape embedded within a grey square, then find the other shapes
+      in the grid that match the embedded shape and turn them the same color
+    - d9fac9be.json, Find the square embedded in a non-black shape and return that square
+    - fcb5c309.json
+    - 3aa6fb7a.json
+    - 36d67576.json
+    Are more examples, since they all have a common approach to solution which involves extracting and working with 
+    embedded shapes within the input matrix, and shapes embedded within other shapes
+    
+    
+    The similarities between the tasks demonstrates what Francois Chollet (https://arxiv.org/abs/1911.01547) 
+    meant when he said:
+    
+        "We argue that solely measuring skill at any given task falls short of measuring intelligence, 
+        because skill is heavily modulated by prior knowledge and experience"
+    
+    Whether it be human or machine, the first time we solve a problem of a particular type, 
+    we acquire skills that allow us to more easily solve similar problems. This does not 
+    accurately measure true intelligence, which is the ability to solve previously 
+    unseen challenges. The three basic techniques outlined in this submission are likely
+    capable to solve a large percentage of the tasks within the ARC corpus, without the need for 
+    developing new approaches or algorithms. 
+    
+    It would have been significantly less effort for me to implement three solve functions of 
+    the same type, than three problems of different type - because I would not have needed 
+    to invent / discover new skills or methods (by skills and methods, I am referring to 
+    logical thinking, not python functions or libraries): I simply would have just
+    parameterised and re-applied the methods and procedures I had already used.
+    
 """
 
 import os, sys
@@ -78,68 +158,86 @@ import re
 
 
 def solve_row(row):
-    """Take a row containing 9's. Solve using symmetry to return a new row replacing the 9's with correct values.
-    row : Array of characters representing the row 
+    """
+    row : Array of characters representing the row containing 9's (missing squares)
     returns: Array of characters representing the corrected row   
     
     Component of solve_3631a71a
-    We will seek a match for 
-       - Two shifts left of the midpoint, One shift left of the midpoint
-       - At midpoint
-       - One shift right of the midpoint, Two shifts right of the midpoint
-     If any row contains 9's values on both sides of the chosen midpoint, the algorithm will fail. 
-     If the midpoint is more than 2 shifts left or right of the center, the algorithm will fail.
-     A failure at any point will result in returning the input row unchanged"""
-
-    match_l = False 
-    match_r = False 
+    Take a row containing 9's. Solve using symmetry to return a new row replacing the 9's with correct values.
+    Procedure:
+        1. Find the symmetrical centre of the row by checking 2 shifts left and right of the midpoint
+        2. Symmetrical centre is determined by
+            a. Divide the row into the left and right side
+            b. Only one side can have missing squares for the algoritym to work. If both sides are missing squares, we return the
+               row unchanged
+            c. Reverse the order of the right side
+            d. In the side that contains 9's, replace the 9's with a period (.) Then use this side as the match pattern for a regex check for
+               a match to the other side. If there is a match, we have found the symmetrical centre of the row. Additional padding of period (.) may be required
+               to the strings depending on where the centre lies
+        3. If symmertical centre is found
+            a. Populate the missing squares on one side with the corresponding squares on the reversed other side
+            b. Undo the reverse of the left side, remove any padding, reconstruct the new row and return it
+            
+     If any row contains 9's values on both sides of the chosen midpoint, the algorithm will return the row unchanged. 
+     When we transpose the matrix and run the procedure again it will solve these via a vertical symmetry
+    
+     If the symmetrical midpoint is more than 2 shifts left or right of the center, the algorithm will return the row unchanged. The range of the 
+     mid-point offset could be increased in this case but for all test and training cases this has been sufficient
+     """
+    
+    match_l = False     # True if the left side of our row will be the regex pattern for this iteration, otherwise false
+    match_r = False     # True if the right side of our row will be the regex pattern for this iteration, otherwise false
     match = None
     str_left = ""
     str_right = ""
-    midpoint = 0
-    match_offset = 0
+    midpoint = 0        # The symmetrical midpoint we are currently evaluating
+    match_offset = 0    
     
+    # Check for symmetrical centre 2 cells left of the row midpoint, at the row midpoint, and 2 cells right of the row midpoint
+    # Increase this range if we find a case where the midpoing is offset more than this, but for all test and training examples this
+    # is sufficient
     for midpoint_offset in range (-2, 3):
         midpoint = int(len(row) / 2  + midpoint_offset)
         match_l = False 
         match_r = False 
-        str_padding = "." *  (2 * abs(midpoint_offset))
-        
-        # Split our row into two strings, reverse the order of one of the strings and use regex to see if we have a pattern match
-        # treating 9 as a wildcard that matches anything - replace any 9's with the regex single character match
+        # When we shift the symmetrical midpoint one cell left or right, we heed to add 2 padding cells on the 'shorter' side for the regrex match to work
+        str_padding = "." *  (2 * abs(midpoint_offset)) 
         
         # Split the row based on the midpoint, reverse the order of the rightpart
         l_part = np.array(row[0:midpoint]).astype(str)
         r_part = np.array(np.flipud(row[midpoint:])).astype(str)
         
         # Check which side has the 9's
-        if '9' in l_part: match_l = True
-        if '9' in r_part: match_r = True
+        if '9' in l_part: match_l = True   # Left part will be the regex pattern
+        if '9' in r_part: match_r = True   # Right part will be the regex pattern
             
         if match_l and match_r:
-            # This algorithm cannot match wildcards on both sides of the string
+            # This algorithm cannot match wildcards on both sides of the string, continue to the next iteration to shift
+            # the midpoint, or return the row unchanged if none of the midpoints result in a solve
             continue 
         
         if midpoint_offset < 0:
-            # if str_left will be our regex expression, we need to pad with periods
-            str_left = str_padding + ''.join(l_part).replace("9",".") # Add padding to the left string
+            # Add padding to the left string, as this is the shorter side, and replace any 9's with .'s
+            # Only one side will have 9's so the replace operation will be redundant on the side with no 9s's
+            str_left = str_padding + ''.join(l_part).replace("9",".") 
             str_right = ''.join(r_part).replace("9",".") 
         else:
             if midpoint_offset > 0:
+                # Add padding to the right string, as this is the shorter side, and replace any 9's with .'s
                 str_left = ''.join(l_part).replace("9",".")
                 str_right = str_padding + ''.join(r_part).replace("9",".") # Add padding to the right string
             else:
-                str_left = ''.join(l_part).replace("9",".") # No padding  
+                 # Both sides are equal length, just replace any 9's with .'s
+                str_left = ''.join(l_part).replace("9",".") 
                 str_right = ''.join(r_part).replace("9",".")              
         
         # Now see if we have a match ignore the padded spaces during the matching process
         if match_l:
-            match_check = re.match(str_left[2 * abs(midpoint_offset):], str_right[2 * abs(midpoint_offset):])          
+            match = re.match(str_left[2 * abs(midpoint_offset):], str_right[2 * abs(midpoint_offset):])          
         else:
-            match_check = re.match(str_right[2 * abs(midpoint_offset):], str_left[2 * abs(midpoint_offset):])
+            match = re.match(str_right[2 * abs(midpoint_offset):], str_left[2 * abs(midpoint_offset):])
         
-        if match_check != None: 
-            match = match_check
+        if match != None: 
             match_offset = midpoint_offset
             break # exit the loop
     
@@ -148,7 +246,8 @@ def solve_row(row):
         # Failed to find a matching pattern, return the row unchanged
         return row
     
-    # We have a match, so replace periods in the target row part with the corresponding characters in the source row part
+    # If we reach this point, then we have the symmetrical midpoint, so replace periods in the target row part with the 
+    # corresponding characters in the source row part
     new_str = ""
     
     if match_l:
@@ -176,7 +275,8 @@ def solve_row(row):
         if match_offset > 0:
             str_right = str_right[abs(match_offset) * 2:]
     
-    # Replace the 9's for any remaining unmatched positions
+    # Replace the .'s with 9's for any remaining unmatched positions, so that they can be picked up in transposed reprocess
+    # And undo the order reversal on the right part
     l_part = ''.join(str_left).replace(".","9")
     r_part = ''.join(str_right)[::-1].replace(".","9")
  
@@ -195,18 +295,20 @@ def rows_iteration(solve_matrix):
     solve for any 9's that appear in the string"""
     
     # Initialise the return array
+    # We build and return a new array rather than modifying the original in-place
     new_array = np.array([])
     mask_val = 9 # We are searching for 9's
 
     for row in solve_matrix:
         if mask_val in row:
-            # The row contains 9's. So we have to solve to replace the 9's with another value
+            # The row contains 9's - missing squares. So we have to solve to replace the 9's with another value
             new_row = solve_row(row)
             new_array = np.append(new_array, new_row, axis=0)
         else:
+            # The row has no missing squares, so just add it to the return matrix
             new_array = np.append(new_array, row, axis=0)
     
-    # reshape and return the updated np array
+    # reshape and return the new, updated np array
     return new_array.astype(int).reshape(solve_matrix.shape)
 
 def solve_3631a71a(x):
@@ -223,7 +325,7 @@ def solve_3631a71a(x):
                any character on the opposite side
             6. solve the missing cells by their opposite counterpart in the other half of the row
         2. For each column in the input matrix x, that has missing cells (contains value = 9), repeat the same procecdure.This is achieved by transposing x and 
-           running the row-wise algoritym again.
+           running the row-wise algorithym again.
     """ 
     
     # Loop through every row in the input matrix.
